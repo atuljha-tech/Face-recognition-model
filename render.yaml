@@ -2,17 +2,11 @@ services:
   - type: web
     name: face-recognition-api
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    buildCommand: ./render-build.sh
+    startCommand: ./venv/bin/uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: SECRET_KEY
         generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: face-db
-          property: connectionString
-    plan: free
-
-databases:
-  - name: face-db
     plan: free

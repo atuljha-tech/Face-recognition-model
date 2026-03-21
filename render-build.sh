@@ -10,7 +10,7 @@ source venv/bin/activate
 # Upgrade pip
 pip install --upgrade pip
 
-# Install dlib-bin (use version 20.0.0 for Python 3.11)
+# Install dlib-bin
 echo "Installing dlib-bin..."
 pip install dlib-bin==20.0.0
 
