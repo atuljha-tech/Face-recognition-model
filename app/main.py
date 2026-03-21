@@ -16,34 +16,21 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS - Allow all origins for development
+# Configure CORS - Allow both local and production frontends
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Frontend URLs
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://face-recognition-model.vercel.app",  # Your Vercel frontend
+        "https://*.vercel.app",  # Allow all Vercel previews
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Include OPTIONS
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
     expose_headers=["*"],
-    max_age=600,  # Cache preflight requests for 10 minutes
+    max_age=600,
 )
-
-# Add custom middleware to handle OPTIONS requests
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-
-class OptionsMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        if request.method == "OPTIONS":
-            response = Response()
-            response.headers["Access-Control-Allow-Origin"] = "http://localhost:3000"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "*"
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            return response
-        return await call_next(request)
-
-# Add OPTIONS middleware (optional, since CORSMiddleware handles it)
-# app.add_middleware(OptionsMiddleware)
 
 # Include routers
 app.include_router(health.router)
@@ -59,10 +46,9 @@ async def startup_event():
     print("=" * 50)
     print(f"🚀 {settings.PROJECT_NAME} v{settings.VERSION}")
     print("📖 Swagger docs: http://localhost:8000/docs")
-    print("🔗 CORS enabled for: http://localhost:3000")
+    print("🔗 CORS enabled for localhost and Vercel frontend")
     print("=" * 50)
 
-    # ADD THIS SECTION:
 if __name__ == "__main__":
     import uvicorn
     import os
