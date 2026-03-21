@@ -61,3 +61,10 @@ async def startup_event():
     print("📖 Swagger docs: http://localhost:8000/docs")
     print("🔗 CORS enabled for: http://localhost:3000")
     print("=" * 50)
+
+    # ADD THIS SECTION:
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
