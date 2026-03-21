@@ -1,7 +1,7 @@
 #!/bin/bash
-set -e  # Exit on error
+set -e
 
-echo "🚀 Starting Render build..."
+echo "Starting Render build..."
 
 # Create and activate virtual environment
 python3 -m venv venv
@@ -10,16 +10,16 @@ source venv/bin/activate
 # Upgrade pip
 pip install --upgrade pip
 
-# Install dlib-bin first (pre-compiled, no compilation needed)
-echo "📦 Installing dlib-bin..."
-pip install dlib-bin==19.24.2
+# Install dlib-bin (use version 20.0.0 for Python 3.11)
+echo "Installing dlib-bin..."
+pip install dlib-bin==20.0.0
 
 # Install face_recognition WITHOUT dependencies
-echo "📦 Installing face_recognition..."
+echo "Installing face_recognition..."
 pip install --no-deps face_recognition
 
 # Install all other packages
-echo "📦 Installing other packages..."
+echo "Installing other packages..."
 pip install fastapi==0.104.1
 pip install uvicorn==0.24.0
 pip install python-multipart==0.0.6
@@ -31,12 +31,8 @@ pip install python-jose[cryptography]==3.3.0
 pip install PyJWT==2.8.0
 pip install python-dotenv==1.0.0
 
-# Install face recognition models (pre-trained weights)
-echo "📦 Installing face recognition models..."
+# Install face recognition models
+echo "Installing face recognition models..."
 pip install face_recognition_models
 
-echo "✅ Build complete!"
-
-# List installed packages to verify
-pip list | grep -E "dlib|face|opencv|fastapi"
-
+echo "Build complete!"
