@@ -7,6 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import health, register, recognize, users, auth, logs
 from app.config import settings
 
+# Create database tables on startup
+from app.models.database import engine
+from app.models.auth import Base
+Base.metadata.create_all(bind=engine)
+print("✅ Database tables created/verified")
+
 # Create FastAPI app
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -16,14 +22,15 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS - Allow both local and production frontends
+# Configure CORS - Allow your frontend domains
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://face-recognition-model.vercel.app",  # Your Vercel frontend
-        "https://*.vercel.app",  # Allow all Vercel previews
+        "https://face-recognition-model.vercel.app",
+        "https://face-recognition-model-five.vercel.app",
+        "https://*.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -46,7 +53,7 @@ async def startup_event():
     print("=" * 50)
     print(f"🚀 {settings.PROJECT_NAME} v{settings.VERSION}")
     print("📖 Swagger docs: http://localhost:8000/docs")
-    print("🔗 CORS enabled for localhost and Vercel frontend")
+    print("🔗 CORS enabled for Vercel frontend")
     print("=" * 50)
 
 if __name__ == "__main__":
