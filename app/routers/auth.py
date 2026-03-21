@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
+from pydantic import BaseModel
 
 from app.models.database import SessionLocal
 from app.models.auth import User, UserCreate, Token
@@ -14,6 +15,11 @@ from app.services.auth_service import (
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+# Define custom form for login to avoid compatibility issues
+class LoginForm(BaseModel):
+    username: str
+    password: str
 
 def get_db():
     db = SessionLocal()
@@ -29,6 +35,11 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.username == user_data.username).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already registered")
+    
+    # Check if email exists
+    existing_email = db.query(User).filter(User.email == user_data.email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
     
     # Create new user
     hashed_password = get_password_hash(user_data.password)
@@ -46,7 +57,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login(form_data: LoginForm, db: Session = Depends(get_db)):
     """Login to get access token"""
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -58,3 +69,28 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me")
+async def get_current_user(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """Get current user info (pass token in query or header)"""
+    from app.services.auth_service import decode_token
+    
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    username = payload.get("sub")
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "created_at": user.created_at
+    }
+
