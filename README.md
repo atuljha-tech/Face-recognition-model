@@ -94,29 +94,11 @@ curl -X POST http://localhost:8000/auth/admin/register \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","email":"admin@example.com","password":"admin123"}'
 ```
-🌐 API Endpoints
-Method	Endpoint	Description
-POST	/auth/admin/register	Register admin
-POST	/auth/admin/login	Admin login
-POST	/auth/user/send-otp	Send OTP (demo: returns 123456)
-POST	/auth/user/verify-otp	Verify OTP and login
-POST	/register	Register a person (Admin)
-POST	/recognize	Recognize face in image
-GET	/users	List all people (Admin)
-DELETE	/users/{id}	Delete person (Admin)
-GET	/stats	System statistics
-GET	/health	Health check
-📱 Frontend Pages
-Page	Route	Access
-Login	/login	Public
-Live Recognition	/	Authenticated
-Quick Start	/quick-start	Admin
-Register Person	/register	Admin
-Dashboard	/dashboard	Admin
-🔐 Authentication
+
+🔐 Authentication-
+
 Admin Login
 Username: admin (after registration)
-
 Password: admin123
 
 User Login (Demo Mode)
@@ -126,16 +108,15 @@ OTP: 123456 (any 6-digit OTP works)
 
 User account auto-created on first login
 
-🚀 Deployment
+🚀 Deployment-
+
 Backend (Render)
 Push code to GitHub
 
 Create new Web Service on render.com
 
 Set:
-
 Build Command: ./render-build.sh
-
 Start Command: venv/bin/uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
 Environment: PYTHON_VERSION=3.11.9, SECRET_KEY
