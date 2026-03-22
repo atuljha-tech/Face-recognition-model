@@ -1,25 +1,25 @@
 """
-Authentication endpoints
+Authentication endpoints - With dummy OTP for demo
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import timedelta
 from pydantic import BaseModel
 
 from app.models.database import SessionLocal
-from app.models.auth import User, UserCreate, Token
+from app.models.auth import User, UserCreate, Token, UserRole, UserLogin
 from app.services.auth_service import (
-    authenticate_user, create_access_token, get_password_hash
+    authenticate_admin, create_access_token, get_password_hash,
+    generate_otp, verify_otp, get_or_create_user_by_phone, decode_token
 )
-from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# Define custom form for login to avoid compatibility issues
-class LoginForm(BaseModel):
-    username: str
-    password: str
+class PhoneLoginRequest(BaseModel):
+    phone: str
+
+class PhoneVerifyRequest(BaseModel):
+    phone: str
+    otp: str
 
 def get_db():
     db = SessionLocal()
@@ -28,69 +28,89 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/register", response_model=Token)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    """Register a new user"""
-    # Check if user exists
+# ==================== ADMIN ENDPOINTS ====================
+
+@router.post("/admin/register", response_model=Token)
+async def admin_register(user_data: UserCreate, db: Session = Depends(get_db)):
+    """Register a new admin user"""
+    user_data.role = UserRole.ADMIN
+    
     existing_user = db.query(User).filter(User.username == user_data.username).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already registered")
     
-    # Check if email exists
-    existing_email = db.query(User).filter(User.email == user_data.email).first()
-    if existing_email:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create new user
     hashed_password = get_password_hash(user_data.password)
     db_user = User(
         username=user_data.username,
         email=user_data.email,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        role=UserRole.ADMIN
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     
-    # Create access token
-    access_token = create_access_token(data={"sub": db_user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": db_user.username, "role": "admin", "user_id": db_user.id})
+    return {"access_token": access_token, "token_type": "bearer", "role": "admin", "username": db_user.username}
 
-@router.post("/login", response_model=Token)
-async def login(form_data: LoginForm, db: Session = Depends(get_db)):
-    """Login to get access token"""
-    user = authenticate_user(db, form_data.username, form_data.password)
+@router.post("/admin/login", response_model=Token)
+async def admin_login(form_data: UserLogin, db: Session = Depends(get_db)):
+    """Admin login with username and password"""
+    user = authenticate_admin(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token = create_access_token(data={"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": user.username, "role": "admin", "user_id": user.id})
+    return {"access_token": access_token, "token_type": "bearer", "role": "admin", "username": user.username}
+
+# ==================== USER (PHONE) ENDPOINTS - DUMMY OTP ====================
+
+@router.post("/user/send-otp")
+async def send_otp(request: PhoneLoginRequest):
+    """Send OTP - for demo, always returns 123456"""
+    otp = generate_otp(request.phone)
+    # For demo, just return the OTP directly
+    return {"message": "OTP sent successfully", "otp": otp}
+
+@router.post("/user/verify-otp", response_model=Token)
+async def verify_otp_login(request: PhoneVerifyRequest, db: Session = Depends(get_db)):
+    """Verify OTP - for demo, any 6-digit OTP works"""
+    if not verify_otp(request.phone, request.otp):
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    user = get_or_create_user_by_phone(db, request.phone)
+    
+    access_token = create_access_token(data={"sub": user.phone, "role": "user", "user_id": user.id})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": "user",
+        "phone": user.phone
+    }
+
+# ==================== COMMON ENDPOINTS ====================
 
 @router.get("/me")
-async def get_current_user(
-    token: str,
-    db: Session = Depends(get_db)
-):
-    """Get current user info (pass token in query or header)"""
-    from app.services.auth_service import decode_token
-    
+async def get_current_user(token: str, db: Session = Depends(get_db)):
+    """Get current user info from token"""
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
     
-    username = payload.get("sub")
-    user = db.query(User).filter(User.username == username).first()
+    user_id = payload.get("user_id")
+    
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     
     return {
         "id": user.id,
         "username": user.username,
+        "phone": user.phone,
         "email": user.email,
+        "role": user.role,
         "created_at": user.created_at
     }
-

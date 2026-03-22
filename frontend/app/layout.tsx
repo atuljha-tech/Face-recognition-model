@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
-import Login from '@/components/Login';
+import { usePathname, useRouter } from 'next/navigation';
 
 const inter = Inter({ subsets: ['latin'] });
+
+// Admin-only routes
+const adminOnlyRoutes = ['/dashboard', '/register', '/quick-start'];
 
 export default function RootLayout({
   children,
@@ -14,37 +17,52 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const publicPaths = ['/login'];
 
   useEffect(() => {
-    // Check if user is logged in
     const token = localStorage.getItem('access_token');
-    setIsAuthenticated(!!token);
+    const role = localStorage.getItem('user_role');
+    
+    if (token && role) {
+      setIsAuthenticated(true);
+      setUserRole(role);
+    } else {
+      setIsAuthenticated(false);
+      setUserRole(null);
+    }
     setLoading(false);
-  }, []);
+  }, [pathname]);
+
+  // Role-based access control
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      // Check if user is trying to access admin-only route
+      if (adminOnlyRoutes.includes(pathname) && userRole !== 'admin') {
+        router.push('/');
+      }
+    }
+  }, [loading, isAuthenticated, userRole, pathname, router]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !isAuthenticated && !publicPaths.includes(pathname)) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, loading, pathname, router]);
 
   if (loading) {
     return (
       <html lang="en">
         <body className={inter.className}>
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30 flex items-center justify-center">
+          <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
             <div className="text-center">
-              <div className="relative">
-                {/* Animated spinner */}
-                <div className="w-20 h-20 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-3xl animate-pulse">👤</span>
-                </div>
-              </div>
-              <p className="text-gray-600 font-medium mt-4">Loading FaceRecog</p>
-              <p className="text-sm text-gray-400 mt-1">Preparing your experience...</p>
-              
-              {/* Animated dots */}
-              <div className="flex justify-center space-x-1 mt-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
+              <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-white">Loading...</p>
             </div>
           </div>
         </body>
@@ -52,24 +70,23 @@ export default function RootLayout({
     );
   }
 
-  if (!isAuthenticated) {
+  // Show login page directly
+  if (publicPaths.includes(pathname)) {
     return (
       <html lang="en">
         <body className={inter.className}>
-          <Login onLoginSuccess={() => setIsAuthenticated(true)} />
+          {children}
         </body>
       </html>
     );
   }
 
+  // Show authenticated layout
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50/30`}>
+      <body className={inter.className}>
         <Navbar />
-        <main className="min-h-screen">{children}</main>
-        
-        {/* Optional: Add a subtle gradient overlay */}
-        <div className="fixed inset-0 pointer-events-none bg-gradient-to-t from-transparent to-purple-50/5"></div>
+        <main>{children}</main>
       </body>
     </html>
   );

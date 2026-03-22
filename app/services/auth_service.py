@@ -1,5 +1,5 @@
 """
-Authentication service - Simplified with SHA256
+Authentication service - With dummy OTP for demo
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -16,21 +16,50 @@ def get_password_hash(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify password"""
-    if ":" not in hashed_password:
+    if not hashed_password or ":" not in hashed_password:
         return False
     stored_hash, salt = hashed_password.split(":")
     computed_hash = hashlib.sha256(f"{plain_password}{salt}".encode()).hexdigest()
     return secrets.compare_digest(stored_hash, computed_hash)
 
-def authenticate_user(db: Session, username: str, password: str):
-    """Authenticate user by username and password"""
-    from app.models.auth import User
+# DUMMY OTP: Any phone + any 6-digit OTP works for demo
+def generate_otp(phone: str) -> str:
+    """Generate OTP - for demo, always returns '123456'"""
+    return "123456"
+
+def verify_otp(phone: str, otp: str) -> bool:
+    """Verify OTP - for demo, any 6-digit OTP works"""
+    # Accept any 6-digit OTP
+    return len(otp) == 6 and otp.isdigit()
+
+def authenticate_admin(db: Session, username: str, password: str):
+    """Authenticate admin user"""
+    from app.models.auth import User, UserRole
     
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(
+        User.username == username,
+        User.role == UserRole.ADMIN
+    ).first()
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
         return False
+    return user
+
+def get_or_create_user_by_phone(db: Session, phone: str):
+    """Get or create a user by phone number"""
+    from app.models.auth import User, UserRole
+    
+    user = db.query(User).filter(User.phone == phone).first()
+    if not user:
+        user = User(
+            phone=phone,
+            role=UserRole.USER,
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     return user
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
