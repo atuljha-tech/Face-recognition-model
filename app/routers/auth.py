@@ -1,7 +1,7 @@
 """
-Authentication endpoints - With dummy OTP for demo
+Authentication endpoints - With explicit OPTIONS handler for CORS
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -27,6 +27,50 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# ==================== CORS OPTIONS HANDLER ====================
+
+@router.options("/admin/login")
+async def admin_login_options():
+    """Handle OPTIONS preflight request for admin login"""
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "https://face-recognition-model-3em3.vercel.app",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "600",
+        }
+    )
+
+@router.options("/user/send-otp")
+async def user_send_otp_options():
+    """Handle OPTIONS preflight request for send OTP"""
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "https://face-recognition-model-3em3.vercel.app",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "600",
+        }
+    )
+
+@router.options("/user/verify-otp")
+async def user_verify_otp_options():
+    """Handle OPTIONS preflight request for verify OTP"""
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "https://face-recognition-model-3em3.vercel.app",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "600",
+        }
+    )
 
 # ==================== ADMIN ENDPOINTS ====================
 
@@ -72,7 +116,6 @@ async def admin_login(form_data: UserLogin, db: Session = Depends(get_db)):
 async def send_otp(request: PhoneLoginRequest):
     """Send OTP - for demo, always returns 123456"""
     otp = generate_otp(request.phone)
-    # For demo, just return the OTP directly
     return {"message": "OTP sent successfully", "otp": otp}
 
 @router.post("/user/verify-otp", response_model=Token)
