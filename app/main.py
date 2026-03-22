@@ -7,12 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import health, register, recognize, users, auth, logs
 from app.config import settings
 
-# Create database tables on startup
-from app.models.database import engine
-from app.models.auth import Base
-Base.metadata.create_all(bind=engine)
-print("✅ Database tables created/verified")
-
 # Create FastAPI app
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -22,15 +16,14 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS - Allow your frontend domains
+# Configure CORS - Allow your Vercel frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://face-recognition-model.vercel.app",
-        "https://face-recognition-model-five.vercel.app",
-        "https://*.vercel.app",
+        "https://face-recognition-model-3em3.vercel.app",  # Your current Vercel URL
+        "https://*.vercel.app",  # Allow all Vercel previews
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
