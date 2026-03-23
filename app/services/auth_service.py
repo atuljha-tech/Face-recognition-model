@@ -1,5 +1,5 @@
 """
-Authentication service - With dummy OTP for demo
+Authentication service - With hardcoded admin for demo
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -8,6 +8,13 @@ import hashlib
 import secrets
 from sqlalchemy.orm import Session
 from app.config import settings
+
+# HARDCODED ADMIN CREDENTIALS (for demo)
+HARDCODED_ADMIN = {
+    "username": "admin",
+    "password": "admin123",
+    "email": "admin@example.com"
+}
 
 def get_password_hash(password: str) -> str:
     """Hash password using SHA256"""
@@ -29,11 +36,30 @@ def generate_otp(phone: str) -> str:
 
 def verify_otp(phone: str, otp: str) -> bool:
     """Verify OTP - for demo, any 6-digit OTP works"""
-    # Accept any 6-digit OTP
     return len(otp) == 6 and otp.isdigit()
 
 def authenticate_admin(db: Session, username: str, password: str):
-    """Authenticate admin user"""
+    """Authenticate admin user - FIRST CHECK HARDCODED CREDENTIALS"""
+    # Check hardcoded admin first
+    if username == HARDCODED_ADMIN["username"] and password == HARDCODED_ADMIN["password"]:
+        # Create a mock user object for hardcoded admin
+        from app.models.auth import User, UserRole
+        # Check if hardcoded admin exists in DB, if not, create it
+        user = db.query(User).filter(User.username == HARDCODED_ADMIN["username"]).first()
+        if not user:
+            hashed_password = get_password_hash(HARDCODED_ADMIN["password"])
+            user = User(
+                username=HARDCODED_ADMIN["username"],
+                email=HARDCODED_ADMIN["email"],
+                hashed_password=hashed_password,
+                role=UserRole.ADMIN
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        return user
+    
+    # Fallback to database check for other admins
     from app.models.auth import User, UserRole
     
     user = db.query(User).filter(
